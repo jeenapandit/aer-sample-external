@@ -56,7 +56,7 @@ pipeline {
                     // Test the Docker image by running it temporarily
                     sh """
                         echo "Testing Docker container on port ${testPort}..."
-                        docker run -d --name ${containerName} -p ${testPort}:3000 ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}
+                        docker run -d --name ${containerName} -p ${testPort}:${testPort} -e PORT=${testPort} ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}
                         sleep 10
                         
                         # Verify container is running
