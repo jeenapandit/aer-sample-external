@@ -60,11 +60,14 @@ pipeline {
                     
                     // Clean up any existing containers with the same name pattern
                     sh """
-                        # Remove any existing test containers
+                        # Remove any existing test containers with various naming patterns
                         docker stop test-container-temp 2>/dev/null || true
                         docker rm -f test-container-temp 2>/dev/null || true
                         docker stop ${containerName} 2>/dev/null || true
                         docker rm -f ${containerName} 2>/dev/null || true
+                        
+                        # Clean up containers with pattern test-container-*
+                        docker ps -a --filter "name=test-container-" --format "{{.Names}}" | xargs -r docker rm -f 2>/dev/null || true
                     """
                     
                     // Test the Docker image by running it temporarily
@@ -106,18 +109,23 @@ pipeline {
     post {
         always {
             script {
-                // Cleanup any remaining test containers
+                // Cleanup any remaining test containers and processes
                 sh '''
                     # Force cleanup of any test containers that might still exist
                     docker stop test-container-temp 2>/dev/null || true
                     docker rm -f test-container-temp 2>/dev/null || true
                     
-                    # Clean up containers created by this build
+                    # Clean up ALL containers created by this build pattern (more aggressive)
+                    docker ps -a --filter "name=test-container-" --format "{{.Names}}" | xargs -r docker stop 2>/dev/null || true
                     docker ps -a --filter "name=test-container-" --format "{{.Names}}" | xargs -r docker rm -f 2>/dev/null || true
                     
-                    # Kill any processes using ports in our test range (3000-3999) - optional extra safety
-                    # Uncomment if you want aggressive port cleanup (be careful on shared systems)
-                    # for port in {3000..3010}; do fuser -k ${port}/tcp 2>/dev/null || true; done
+                    # Kill any processes using port 8084 (unit tests)
+                    fuser -k 8084/tcp 2>/dev/null || true
+                    
+                    # Kill any processes using ports in our test range (3000-3999)
+                    for port in {3000..3010}; do 
+                        fuser -k ${port}/tcp 2>/dev/null || true
+                    done
                     
                     # General Docker cleanup
                     docker system prune -f
