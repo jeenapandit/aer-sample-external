@@ -20,7 +20,21 @@ pipeline {
                     // Run unit tests before building Docker image
                     sh """
                         npm install
-                        npm test
+                        
+                        # Kill any processes using port 8084 before running tests
+                        fuser -k 8084/tcp 2>/dev/null || true
+                        
+                        # Wait a moment for port to be freed
+                        sleep 3
+                        
+                        # Set port 8084 for tests
+                        export PORT=8084
+                        export SERVER=http://localhost:8082
+                        
+                        echo "Running tests with PORT=8084"
+                        
+                        # Run tests with timeout to prevent hanging
+                        timeout 300 npm test || exit 1
                     """
                 }
             }
